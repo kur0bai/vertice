@@ -105,4 +105,8 @@ export class UsersService {
       throw new InternalServerErrorException('No se pudo eliminar el usuario');
     }
   }
+
+  async countUsers(): Promise<number> {
+    return this.userModel.countDocuments().exec();
+  }
 }

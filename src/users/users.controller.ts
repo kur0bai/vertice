@@ -14,6 +14,9 @@ import { UserOwnerOrAdminGuard } from './guards/owner-or-admin.guard';
 import { ApiHeader, ApiOperation } from '@nestjs/swagger';
 import { CreateAdminDto } from './dto/create-user-admin.dto';
 import { AdminGuard } from 'src/common/guards/admin.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Role } from 'src/common/enums/role.enum';
 
 @Controller('users')
 export class UsersController {
@@ -46,9 +49,11 @@ export class UsersController {
   @ApiOperation({
     summary: 'Crear un usuario administrador',
   })
-  @Post('admin')
-  @UseGuards(AdminGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Post()
   async createAdmin(@Body() dto: CreateAdminDto) {
     return this.usersService.createAdmin(dto);
   }
+
 }

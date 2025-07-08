@@ -18,6 +18,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) { }
 
+
+
   async register(userDto: CreateUserDto) {
     const { email, password, name } = userDto;
 
@@ -27,13 +29,15 @@ export class AuthService {
     }
 
     try {
+
+      const userCount = await this.usersService.countUsers();
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const userToCreate = {
         email,
         name,
         password: hashedPassword,
-        role: Role.User,
+        role: userCount === 0 ? Role.Admin : Role.User, // If first user in db make it admin
       };
 
       const newUser: UserDocument = await this.usersService.create(userToCreate);
@@ -65,7 +69,6 @@ export class AuthService {
         email: user.email,
         role: user.role,
       };
-
       const accessToken = this.jwtService.sign(payload);
 
       return {

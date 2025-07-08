@@ -1,7 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ApiOperation } from '@nestjs/swagger';
+import { AdminGuard } from 'src/common/guards/admin.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Role } from 'src/common/enums/role.enum';
 
 @Controller('products')
 export class ProductsController {
@@ -10,6 +15,8 @@ export class ProductsController {
   @Post()
   @ApiOperation({ summary: 'Crear un producto estandar' })
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
   async create(@Body() createProductDto: CreateProductDto) {
     const createdProduct = await this.productsService.create(createProductDto);
     return {
