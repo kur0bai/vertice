@@ -47,7 +47,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('profile')
+  @Get('me')
   @ApiOperation({ summary: 'Perfil del usuario' })
   userRoute(@Request() req: RequestWithUser) {
     return {
