@@ -19,12 +19,13 @@ export class OrdersController {
   @Post()
   async create(@Body() dto: CreateOrderDto, @Request() req) {
     const { userId } = req.user
-    return this.ordersService.createOrder(userId, dto);
+    return this.ordersService.createOrder(dto, userId);
   }
 
   @Get()
-  async findAll() {
-    return this.ordersService.findAll();
+  async findAll(@Request() req) {
+    const { userId } = req.user
+    return this.ordersService.findAll(userId);
   }
 
   @Get(':id')

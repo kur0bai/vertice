@@ -12,29 +12,31 @@ export class OrdersService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
   ) { }
 
-  async createOrder(userId: string, dto: CreateOrderDto): Promise<OrderDocument> {
-    const products = await this.productModel.find({
-      _id: { $in: dto.productIds },
-    });
+  async createOrder(dto: CreateOrderDto, userId: string): Promise<OrderDocument> {
+    const productIds = dto.products.map(p => p.product);
 
-    if (products.length === 0) {
-      throw new NotFoundException('No se encontraron productos válidos');
+    const productsInDb = await this.productModel.find({ _id: { $in: productIds } });
+
+    let total = 0;
+
+    for (const item of dto.products) {
+      const product = productsInDb.find(p => p._id.toString() === item.product);
+      if (!product) throw new NotFoundException(`Producto ${item.product} no encontrado`);
+      total += product.price * item.quantity;
     }
 
-    const total = products.reduce((sum, p) => sum + p.price, 0);
-
-    const newOrder = new this.orderModel({
+    const createdOrder = new this.orderModel({
+      products: dto.products,
       user: userId,
-      products: dto.productIds,
       total,
     });
 
-    return newOrder.save();
+    return await createdOrder.save();
   }
 
-  async findAll(): Promise<OrderDocument[]> {
+  async findAll(userId: string): Promise<OrderDocument[]> {
     return this.orderModel
-      .find()
+      .find({ user: userId })
       .populate('products')
       .populate('user', 'email name')
       .exec();
