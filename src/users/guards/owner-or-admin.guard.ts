@@ -5,6 +5,7 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { UsersService } from '../users.service';
+import { isValidObjectId } from 'mongoose';
 
 @Injectable()
 export class UserOwnerOrAdminGuard implements CanActivate {
@@ -14,14 +15,19 @@ export class UserOwnerOrAdminGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         const { user, params } = request;
 
-        const userId = parseInt(params.id, 10);
-        const targetUser = await this.usersService.findOne(userId);
+        const userId = params.id;
 
+        if (!isValidObjectId(userId)) {
+            throw new ForbiddenException('ID inválido');
+        }
+
+
+        const targetUser = await this.usersService.findOne(userId);
         if (!targetUser) {
             throw new ForbiddenException('Usuario no encontrado');
         }
 
-        if (user.userId === targetUser.id || user.role === 'admin') {
+        if (targetUser._id.toString() === user.userId || user.role === 'admin') {
             return true;
         }
 

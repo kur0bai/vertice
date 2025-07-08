@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongo_db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: vertice_db
+    volumes:
+      - mongo_data:/data/db
+
+  nest-app:
+    build: .
+    container_name: vertice_app
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/usr/src/app
+    command: npm run start:dev
+
+volumes:
+  mongo_data:

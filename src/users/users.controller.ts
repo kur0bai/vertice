@@ -28,7 +28,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, UserOwnerOrAdminGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(+id, dto);
+    return this.usersService.update(id, dto);
   }
 
   @ApiOperation({ summary: 'Elimina un usuario' })
@@ -40,7 +40,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, UserOwnerOrAdminGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+    return this.usersService.remove(id);
   }
 
   @ApiOperation({

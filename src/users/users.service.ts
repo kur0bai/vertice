@@ -2,63 +2,61 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Role } from 'src/common/enums/role.enum';
 import { CreateAdminDto } from './dto/create-user-admin.dto';
+import { Role } from 'src/common/enums/role.enum';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private userRepo: Repository<User>) { }
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+  ) { }
 
-  //find all users
-  async findAll(): Promise<User[]> {
+  async findAll(): Promise<UserDocument[]> {
     try {
-      return await this.userRepo.find();
+      return await this.userModel.find().exec();
     } catch (error) {
       console.error('Error finding all users:', error);
-      throw new InternalServerErrorException(
-        'No se pudieron encontrar los usuarios',
-      );
+      throw new InternalServerErrorException('No se pudieron obtener usuarios');
     }
   }
 
-  //find one user by id
-  async findOne(id: number): Promise<User> {
+  async findOne(id: string): Promise<UserDocument> {
     try {
-      const user = await this.userRepo.findOne({ where: { id } });
+      const user = await this.userModel.findById(id).exec();
       if (!user) {
-        throw new InternalServerErrorException('Usuario no encontrado');
+        throw new NotFoundException('Usuario no encontrado');
       }
       return user;
     } catch (error) {
       console.error('Error finding user:', error);
-      throw new InternalServerErrorException('No se pudo encontrar el usuario');
+      throw new InternalServerErrorException('Error al buscar usuario');
     }
   }
 
-  //Create a simple user with email, password and role, thinking in make user by default
-  async create(user: CreateUserDto): Promise<User> {
-    const newUser = this.userRepo.create({ ...user });
+  async create(dto: CreateUserDto): Promise<UserDocument> {
     try {
-      return await this.userRepo.save(newUser);
-    } catch (error) {
-      if (error.code === '23505') {
-        // existing email
+      const exists = await this.userModel.findOne({ email: dto.email }).exec();
+      if (exists) {
         throw new ConflictException('El email ya está registrado');
       }
+
+      const newUser = new this.userModel(dto);
+      return await newUser.save();
+    } catch (error) {
       console.error('Error al guardar usuario:', error);
       throw new InternalServerErrorException('No se pudo registrar el usuario');
     }
   }
 
-  //Create admin
-  async createAdmin(dto: CreateAdminDto): Promise<User> {
+  async createAdmin(dto: CreateAdminDto): Promise<UserDocument> {
     try {
       const hashedPassword = await bcrypt.hash(dto.password, 10);
       const adminUser = {
@@ -66,48 +64,42 @@ export class UsersService {
         password: hashedPassword,
         role: Role.Admin,
       };
-
       return this.create(adminUser);
     } catch (error) {
-      if (error.code === '23505') {
-        // existing email
-        throw new ConflictException('El email ya está registrado');
-      }
-      console.error('Error al guardar usuario:', error);
-      throw new InternalServerErrorException('No se pudo registrar el usuario');
+      console.error('Error al crear admin:', error);
+      throw new InternalServerErrorException('No se pudo registrar el admin');
     }
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<UserDocument | null> {
     try {
-      return this.userRepo.findOne({ where: { email } });
+      return await this.userModel.findOne({ email }).exec();
     } catch (error) {
       console.error('Error finding user by email:', error);
-      throw new InternalServerErrorException(
-        'No se pudo encontrar el usuario por email',
-      );
+      throw new InternalServerErrorException('Error al buscar por email');
     }
   }
 
-  async update(id: number, user: UpdateUserDto): Promise<User> {
+  async update(id: string, dto: UpdateUserDto): Promise<UserDocument> {
     try {
-      await this.userRepo.update(id, user);
-      const existingUser = await this.userRepo.findOne({ where: { id } });
-      if (!existingUser) {
-        throw new InternalServerErrorException('Usuario no encontrado');
+      const user = await this.userModel.findByIdAndUpdate(id, dto, {
+        new: true,
+      }).exec();
+
+      if (!user) {
+        throw new NotFoundException('Usuario no encontrado');
       }
-      return existingUser;
+
+      return user;
     } catch (error) {
-      console.error('Error updating user:', error);
-      throw new InternalServerErrorException(
-        'No se pudo actualizar el usuario',
-      );
+      console.error('Error al actualizar usuario:', error);
+      throw new InternalServerErrorException('No se pudo actualizar el usuario');
     }
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     try {
-      await this.userRepo.delete(id);
+      await this.userModel.findByIdAndDelete(id).exec();
     } catch (error) {
       console.error('Error deleting user:', error);
       throw new InternalServerErrorException('No se pudo eliminar el usuario');

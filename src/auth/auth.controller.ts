@@ -1,34 +1,58 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { Role } from 'src/common/enums/role.enum';
+import { JwtAuthGuard } from './guards/jwt.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { LoginDto } from './dto/login.dto';
+import { ApiOperation } from '@nestjs/swagger';
+import { RequestWithUser } from './interfaces/request-with-user.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  @Post('register')
+  @ApiOperation({ summary: 'Crear un usuario estandar' })
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() user: CreateUserDto) {
+    const createdUser = await this.authService.register(user);
+    return {
+      status: 'success',
+      message: 'Usuario registrado correctamente',
+      data: {
+        id: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role,
+        name: createdUser.name,
+      },
+    };
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @Post('login')
+  @ApiOperation({ summary: 'Inicio de sesión' })
+  async login(@Body() loginDto: LoginDto) {
+    const { email, password } = loginDto;
+    return this.authService.login(email, password);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  @ApiOperation({ summary: 'Perfil del usuario' })
+  userRoute(@Request() req: RequestWithUser) {
+    return {
+      message: 'Perfil de usuario',
+      user: req.user,
+    };
   }
 }
